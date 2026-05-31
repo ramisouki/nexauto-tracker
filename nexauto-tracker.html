@@ -1,0 +1,673 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>NexAuto — Job Tracker</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Syne:wght@400;600;700;800&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jsrsasign/10.5.25/jsrsasign-all-min.js"></script>
+<style>
+  :root {
+    --bg: #0a0a0f;
+    --surface: #111118;
+    --surface2: #18181f;
+    --border: #ffffff0f;
+    --border2: #ffffff18;
+    --text: #f0f0f5;
+    --muted: #6b6b7e;
+    --accent: #e8ff47;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: var(--bg); color: var(--text); font-family: 'DM Sans', sans-serif; min-height: 100vh; font-size: 14px; }
+
+  header { display: flex; align-items: center; justify-content: space-between; padding: 18px 28px; border-bottom: 1px solid var(--border); background: var(--surface); position: sticky; top: 0; z-index: 100; }
+  .logo { font-family: 'Syne', sans-serif; font-weight: 800; font-size: 18px; letter-spacing: -0.5px; display: flex; align-items: center; gap: 10px; }
+  .logo-dot { width: 8px; height: 8px; background: var(--accent); border-radius: 50%; display: inline-block; }
+  .header-right { display: flex; align-items: center; gap: 12px; }
+  .sync-status { font-family: 'DM Mono', monospace; font-size: 11px; color: var(--muted); display: flex; align-items: center; gap: 6px; }
+  .sync-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--muted); }
+  .sync-dot.live { background: #22c55e; box-shadow: 0 0 6px #22c55e88; }
+  .sync-dot.syncing { background: var(--accent); animation: pulse 1s infinite; }
+  .sync-dot.error { background: #ff6b6b; }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.3} }
+
+  .btn { padding: 8px 16px; border-radius: 8px; border: 1px solid var(--border2); background: var(--surface2); color: var(--text); font-family: 'DM Sans', sans-serif; font-size: 13px; cursor: pointer; transition: all 0.15s; display: flex; align-items: center; gap: 6px; }
+  .btn:hover { background: var(--border2); }
+  .btn-primary { background: var(--accent); color: #0a0a0f; border-color: var(--accent); font-weight: 600; }
+  .btn-primary:hover { background: #d4eb3a; }
+  .btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+  .stats-bar { display: flex; gap: 1px; background: var(--border); border-bottom: 1px solid var(--border); }
+  .stat-card { flex: 1; background: var(--surface); padding: 16px 20px; display: flex; flex-direction: column; gap: 4px; }
+  .stat-label { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.8px; font-family: 'DM Mono', monospace; }
+  .stat-value { font-family: 'Syne', sans-serif; font-size: 22px; font-weight: 700; }
+  .stat-sub { font-size: 11px; color: var(--muted); }
+
+  .toolbar { display: flex; align-items: center; gap: 10px; padding: 14px 28px; border-bottom: 1px solid var(--border); background: var(--surface); flex-wrap: wrap; }
+  .search-box { display: flex; align-items: center; gap: 8px; background: var(--surface2); border: 1px solid var(--border2); border-radius: 8px; padding: 7px 12px; flex: 1; min-width: 200px; }
+  .search-box input { background: none; border: none; color: var(--text); font-family: 'DM Sans', sans-serif; font-size: 13px; outline: none; width: 100%; }
+  .search-box input::placeholder { color: var(--muted); }
+  select { background: var(--surface2); border: 1px solid var(--border2); border-radius: 8px; color: var(--text); padding: 7px 12px; font-family: 'DM Sans', sans-serif; font-size: 13px; cursor: pointer; outline: none; }
+  select option { background: #18181f; }
+
+  .overdue-banner { margin: 16px 28px; background: #ff474711; border: 1px solid #ff474733; border-radius: 10px; padding: 12px 16px; display: flex; align-items: center; gap: 10px; font-size: 13px; color: #ff9494; }
+  .overdue-banner b { color: #ff6b6b; }
+
+  .section-title { padding: 16px 28px 8px; font-family: 'Syne', sans-serif; font-size: 13px; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: 1px; display: flex; align-items: center; gap: 8px; }
+  .count-pill { background: var(--surface2); border: 1px solid var(--border2); border-radius: 20px; padding: 2px 8px; font-size: 11px; font-family: 'DM Mono', monospace; color: var(--muted); }
+
+  .table-wrap { padding: 0 28px 40px; overflow-x: auto; }
+  table { width: 100%; border-collapse: collapse; min-width: 1100px; }
+  thead th { padding: 10px 12px; text-align: left; font-family: 'DM Mono', monospace; font-size: 10px; text-transform: uppercase; letter-spacing: 0.8px; color: var(--muted); border-bottom: 1px solid var(--border); white-space: nowrap; cursor: pointer; user-select: none; }
+  thead th:hover { color: var(--text); }
+  tbody tr { border-bottom: 1px solid var(--border); transition: background 0.1s; }
+  tbody tr:hover { background: var(--surface2); }
+  tbody tr.overdue { background: #ff47471a; }
+  tbody tr.overdue:hover { background: #ff474725; }
+  td { padding: 11px 12px; vertical-align: middle; white-space: nowrap; }
+
+  .status-select { border: none; cursor: pointer; font-family: 'DM Mono', monospace; font-size: 11px; font-weight: 500; padding: 3px 9px; border-radius: 20px; outline: none; }
+  .s-wip { background: #3b82f620; color: #60a5fa; }
+  .s-awaiting-approval { background: #f59e0b20; color: #fbbf24; }
+  .s-awaiting-payment { background: #a78bfa20; color: #c4b5fd; }
+  .s-awaiting-parts { background: #fb923c20; color: #fdba74; }
+  .s-awaiting-estimate { background: #fb923c20; color: #fdba74; }
+  .s-delivered { background: #22c55e20; color: #4ade80; }
+  .s-review { background: #ec489920; color: #f472b6; }
+  .s-ag { background: #0ea5e920; color: #38bdf8; }
+  .s-aaa { background: #8b5cf620; color: #a78bfa; }
+  .s-tabby { background: #14b8a620; color: #2dd4bf; }
+  .s-diagnosis { background: #64748b20; color: #94a3b8; }
+  .s-other { background: #6b728020; color: #9ca3af; }
+
+  .car-make { font-weight: 500; }
+  .car-plate { font-family: 'DM Mono', monospace; font-size: 11px; color: var(--muted); }
+  .customer-name { font-weight: 500; }
+  .customer-mobile { font-family: 'DM Mono', monospace; font-size: 11px; color: var(--muted); }
+  .date-cell { font-family: 'DM Mono', monospace; font-size: 12px; color: var(--muted); }
+  .date-overdue { color: #ff6b6b !important; font-weight: 600; }
+  .center-name { font-size: 12px; padding: 2px 8px; border-radius: 4px; background: var(--border); color: var(--muted); font-family: 'DM Mono', monospace; }
+  .action-btn { background: none; border: 1px solid var(--border2); color: var(--muted); border-radius: 6px; padding: 4px 8px; cursor: pointer; font-size: 12px; transition: all 0.15s; }
+  .action-btn:hover { background: var(--surface2); color: var(--text); }
+
+  /* Loading */
+  .loading-screen { position: fixed; inset: 0; background: var(--bg); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 16px; z-index: 999; }
+  .loading-screen.hidden { display: none; }
+  .loading-logo { font-family: 'Syne', sans-serif; font-size: 24px; font-weight: 800; }
+  .loading-bar { width: 200px; height: 2px; background: var(--border2); border-radius: 2px; overflow: hidden; }
+  .loading-bar-inner { height: 100%; background: var(--accent); animation: loadbar 1.5s ease-in-out infinite; }
+  @keyframes loadbar { 0%{width:0;margin-left:0} 50%{width:100%;margin-left:0} 100%{width:0;margin-left:100%} }
+  .loading-text { font-family: 'DM Mono', monospace; font-size: 12px; color: var(--muted); }
+
+  /* Toast */
+  .toast { position: fixed; bottom: 28px; right: 28px; background: var(--surface); border: 1px solid var(--border2); border-radius: 10px; padding: 12px 18px; font-size: 13px; z-index: 500; display: flex; align-items: center; gap: 8px; transform: translateY(80px); opacity: 0; transition: all 0.3s; }
+  .toast.show { transform: translateY(0); opacity: 1; }
+  .toast.success { border-color: #22c55e44; color: #4ade80; }
+  .toast.error { border-color: #ff6b6b44; color: #ff9494; }
+
+  /* MODAL */
+  .modal-overlay { display: none; position: fixed; inset: 0; background: #00000088; z-index: 200; align-items: center; justify-content: center; backdrop-filter: blur(4px); }
+  .modal-overlay.open { display: flex; }
+  .modal { background: var(--surface); border: 1px solid var(--border2); border-radius: 16px; padding: 28px; width: 560px; max-width: 95vw; max-height: 90vh; overflow-y: auto; }
+  .modal h2 { font-family: 'Syne', sans-serif; font-size: 18px; font-weight: 700; margin-bottom: 20px; }
+  .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+  .form-full { grid-column: 1 / -1; }
+  .form-group { display: flex; flex-direction: column; gap: 5px; }
+  .form-label { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.6px; font-family: 'DM Mono', monospace; }
+  .form-input { background: var(--surface2); border: 1px solid var(--border2); border-radius: 8px; color: var(--text); padding: 9px 12px; font-family: 'DM Sans', sans-serif; font-size: 13px; outline: none; transition: border-color 0.15s; width: 100%; }
+  .form-input:focus { border-color: var(--accent); }
+  .modal-actions { display: flex; gap: 10px; margin-top: 20px; justify-content: flex-end; }
+  .empty-state { text-align: center; padding: 60px 20px; color: var(--muted); }
+  .empty-state h3 { font-family: 'Syne', sans-serif; font-size: 16px; margin-bottom: 8px; color: var(--text); }
+</style>
+</head>
+<body>
+
+<!-- Loading Screen -->
+<div class="loading-screen" id="loadingScreen">
+  <div class="loading-logo"><span style="color:var(--accent)">Nex</span>Auto</div>
+  <div class="loading-bar"><div class="loading-bar-inner"></div></div>
+  <div class="loading-text" id="loadingText">Connecting to Google Sheets...</div>
+</div>
+
+<div id="appShell" style="display:none">
+  <header>
+    <div class="logo"><span class="logo-dot"></span>NexAuto <span style="color:var(--muted);font-weight:400;font-size:14px;margin-left:4px">/ Ops Tracker</span></div>
+    <div class="header-right">
+      <div class="sync-status"><div class="sync-dot" id="syncDot"></div><span id="syncLabel">—</span></div>
+      <button class="btn" onclick="loadFromSheet()">↺ Refresh</button>
+      <button class="btn" onclick="exportCSV()">↓ Export CSV</button>
+      <button class="btn btn-primary" onclick="openModal()">+ New Job</button>
+    </div>
+  </header>
+
+  <div class="stats-bar" id="statsBar"></div>
+
+  <div class="toolbar">
+    <div class="search-box">
+      <span style="color:var(--muted)">⌕</span>
+      <input type="text" id="searchInput" placeholder="Search customer, plate, make, model..." oninput="renderTable()">
+    </div>
+    <select id="filterStatus" onchange="renderTable()"><option value="">All Statuses</option></select>
+    <select id="filterCenter" onchange="renderTable()">
+      <option value="">All Centers</option>
+      <option>AVC</option><option>Green Motors</option><option>NexAuto.ae</option><option>AC</option>
+    </select>
+    <select id="filterType" onchange="renderTable()"><option value="">All Job Types</option></select>
+    <select id="filterComeback" onchange="renderTable()">
+      <option value="">Come Back?</option>
+      <option value="Yes">⚠ Yes</option>
+      <option value="No">✓ No</option>
+    </select>
+  </div>
+
+  <div id="overdueBanner" style="display:none" class="overdue-banner">
+    ⚠ <b id="overdueCount">0</b> job(s) are past their ETD and not yet delivered.
+  </div>
+
+  <div class="section-title">Jobs <span class="count-pill" id="jobCount">0</span></div>
+
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th onclick="sortBy('status')">Status ↕</th>
+          <th onclick="sortBy('receivingDate')">Date In ↕</th>
+          <th>Customer</th>
+          <th>Vehicle</th>
+          <th onclick="sortBy('jobType')">Job Type ↕</th>
+          <th onclick="sortBy('serviceCenter')">Center ↕</th>
+          <th onclick="sortBy('carETD')">ETD ↕</th>
+          <th>Come Back</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody id="tableBody"></tbody>
+    </table>
+  </div>
+</div>
+
+<!-- Modal -->
+<div class="modal-overlay" id="modalOverlay">
+  <div class="modal">
+    <h2 id="modalTitle">✦ New Job</h2>
+    <div class="form-grid">
+      <div class="form-group"><label class="form-label">Status</label><select class="form-input" id="fStatus"></select></div>
+      <div class="form-group"><label class="form-label">Receiving Date</label><input class="form-input" type="date" id="fDate"></div>
+      <div class="form-group"><label class="form-label">Customer Name</label><input class="form-input" type="text" id="fName"></div>
+      <div class="form-group"><label class="form-label">Mobile</label><input class="form-input" type="text" id="fMobile"></div>
+      <div class="form-group"><label class="form-label">Make</label><input class="form-input" type="text" id="fMake"></div>
+      <div class="form-group"><label class="form-label">Model</label><input class="form-input" type="text" id="fModel"></div>
+      <div class="form-group"><label class="form-label">Plate Number</label><input class="form-input" type="text" id="fPlate"></div>
+      <div class="form-group"><label class="form-label">Job Type</label>
+        <select class="form-input" id="fJobType">
+          <option>Diagnosis</option><option>Mechanical Repairs</option><option>Body Repairs</option>
+          <option>Periodic Service</option><option>Service Contract</option><option>Inspection</option>
+          <option>Warranty Repair</option><option>Tyres</option><option>Software Update</option><option>Car Care</option>
+        </select>
+      </div>
+      <div class="form-group"><label class="form-label">Service Center</label>
+        <select class="form-input" id="fCenter">
+          <option>AVC</option><option>Green Motors</option><option>NexAuto.ae</option><option>AC</option>
+        </select>
+      </div>
+      <div class="form-group"><label class="form-label">Parts ETA</label><input class="form-input" type="date" id="fPartsETA"></div>
+      <div class="form-group"><label class="form-label">Car ETD</label><input class="form-input" type="date" id="fETD"></div>
+      <div class="form-group"><label class="form-label">Come Back?</label>
+        <select class="form-input" id="fComeBack"><option value="No">No</option><option value="Yes">Yes</option></select>
+      </div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn" onclick="closeModal()">Cancel</button>
+      <button class="btn btn-primary" id="saveBtn" onclick="saveJob()">Save Job</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ─── CONFIG ───────────────────────────────────────────────────
+const SHEET_ID = '15X7QAzV_ANCcMKQr-fzLB7TLrtpLmiu4FyxGto1LOAU';
+const SHEET_NAME = 'Sheet1';
+const CLIENT_EMAIL = 'nexauto-wip-tracker@nexauto-tracker.iam.gserviceaccount.com';
+const PRIVATE_KEY = `-----BEGIN PRIVATE KEY-----
+MIIEvQIBADANBgkqhkiG9w0BAQEFAASCBKcwggSjAgEAAoIBAQCc0FFSrEEckQWc
+i1GJP6sg4m+VNn3MtJUePRCnQHyDuU5YulfBtawnkbGe/SOHbNazF6/n3XcSMcQN
+9eck/a9HeLr3rKmVINyUh4qEbiSne6/a6AIDx6nzgNLgOjJFasmjoX/CPVq70yIn
+RrDQ3oQ8y9AIYstl48wVs5Dq3VkHga2bVJrQEMyQvyvtadR/9ULbuQQgM0Y2w4jJ
+nbOqdgDviUOgbI1GO/17sPSC/4KrSieglgQnVQZ8t+xZ4qP/ZH+bME9mGAz4pCbL
+8SN668G0v8EFPoDRT0hapLqHJU1d9LGoTM7tpUhNyu7KOKccWa+W/KJycSLmKaai
+yu3BxiFvAgMBAAECggEADL4a1aJ8ugMI1zM1AXekgswTsCbY6yEDew0QRN8HHzcY
+KDqgNfP61M5QhjBgyjjsa2ox16AV9GsJ2O6SBV3998tWOhkUQLOGaSVoeqFuphN1
+c07mFwOLCmf9+s2P1zc5wmu1s4WD0X5zKIjkhlyGl2AifAP3LkToCR1p2cP535Oo
+BFOJESv2T09I9Des1LN+LfgqhE67vTWphm3/ZdEJKpvvXgQAP2Zbo464Kb6iOCdZ
+oiC0dEdx1e08Ry3PEb8pTeNYYFcDM8R/UU2/eGh3fg27IkkmqpPfj9MPH4uCPJmp
+RNgj+/mFvxOEWdZ0wvAs3eUwDq6ydROpwxMlM3rmFQKBgQDLXJvmCEAItp5MpUVG
+mmw6c683F+NTlquX04oMNWEy5Ky5lJAscl1d1UkzxY3fJWTAgxrmzAPmLPbAkGBr
+oCCzARdpqzqX5QY+zDj7QT3tOaBjktWG4ZI5YbwqY1AohRucE3lXoatY1nAc+nsS
+xAKvlhj+tCaVnB5x8/YcJIydawKBgQDFZ0pjpsP6qdxoL9AXh1ly3E3xEAoloYpW
+h655S2Iaa24xvjWJWxx28DNSQF+78/+ci/R3CH8BDDxqCu232kpbwPqsG8G39BKq
+Z+7rn/PHC1LW8c64VUknT4B3+r/6tTuKCDlP00VMq55vM53S9k2KG1+dsVLu+sUB
+pQFd80QpDQKBgFi6NULuQpIKq5KhYVJmueXe54nQIF0uFfwOTeL5v0jnQP1PdoAN
+/fKcxm2SOk4sEIN2MFyWkvTwlVB7LbaHjPzM8xwlm1D+mfT4QbxOQOiqBfKr9AH/
+lT74B5Mu9aBYQy2byYuUfCAsn4nlN6F+Z/WYNZubmmIYVag+Wxj4UWm1AoGBAICO
+W+u51zePF3LicGpiQuaCgl/TSkhng2gGxKFJboI2JHVQohzpsQfkNggC1FXa+URC
+ANrkNZHBHjcRFu78wiAu9RDQor/hu6YuOXJJoMCnpzNEFpQFNrbbF5cLPatQC45A
+/NH3jNH5khxpSQbyUFz4prRTnubzeQkxJErC+kihAoGAadhZ0dATXQizRzWrA/zM
+cYr8Y4wLtiboVXxVUeC5uDNp9O1Ok77QDkFdtjrSRflZ24tZ+MJhPrcfJU1CiJSM
+zQWI34Wut9iBeWE1Cut89rTzXoNpxHLVmZ5Lm0mbk3HH6DZGBAaXjxgTorUoWQIA
+1jQ9IPF6dDivrtVu7cJwFXE=
+-----END PRIVATE KEY-----`;
+
+// ─── COLUMN MAP (matches your sheet headers) ──────────────────
+// Col index: 0=Status,1=ReceivingDate,2=CustomerName,3=Mobile,
+//            4=Make,5=Model,6=Plate,7=JobType,8=ServiceCenter,
+//            9=PartsETA,10=CarETD,11=ComeBack
+const COL = {
+  status:0, receivingDate:1, name:2, mobile:3,
+  make:4, model:5, plate:6, jobType:7, serviceCenter:8,
+  partsETA:9, carETD:10, comeBack:11
+};
+const TOTAL_COLS = 12;
+
+const STATUSES = ['WIP','Diagnosis','Awaiting Approval','Awaiting Payment','Awaiting Parts','Awaiting Estimate','Delivered','Review','AG Payment','AAA Payment','AG Claim','AG Payment + CX Payment','AutoGuard Payment','Tabby','Other'];
+
+let jobs = [];
+let editingId = null;
+let sortKey = 'receivingDate';
+let sortDir = 1;
+let accessToken = null;
+let tokenExpiry = 0;
+
+// ─── JWT / AUTH ───────────────────────────────────────────────
+async function getAccessToken() {
+  if (accessToken && Date.now() < tokenExpiry - 60000) return accessToken;
+  const now = Math.floor(Date.now() / 1000);
+  const header = { alg: 'RS256', typ: 'JWT' };
+  const claim = {
+    iss: CLIENT_EMAIL,
+    scope: 'https://www.googleapis.com/auth/spreadsheets',
+    aud: 'https://oauth2.googleapis.com/token',
+    exp: now + 3600,
+    iat: now
+  };
+  const b64 = s => btoa(unescape(encodeURIComponent(JSON.stringify(s)))).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'');
+  const unsigned = b64(header) + '.' + b64(claim);
+  const sig = await signJWT(unsigned, PRIVATE_KEY);
+  const jwt = unsigned + '.' + sig;
+  const res = await fetch('https://oauth2.googleapis.com/token', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: `grant_type=urn%3Aietf%3Aparams%3Aoauth%3Agrant-type%3Ajwt-bearer&assertion=${jwt}`
+  });
+  const data = await res.json();
+  if (!data.access_token) throw new Error('Auth failed: ' + JSON.stringify(data));
+  accessToken = data.access_token;
+  tokenExpiry = Date.now() + (data.expires_in * 1000);
+  return accessToken;
+}
+
+async function signJWT(data, pemKey) {
+  const sig = new KJUR.crypto.Signature({ alg: 'SHA256withRSA' });
+  sig.init(pemKey);
+  sig.updateString(data);
+  const hex = sig.sign();
+  const bytes = new Uint8Array(hex.match(/.{1,2}/g).map(b => parseInt(b, 16)));
+  return btoa(String.fromCharCode(...bytes)).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'');
+}
+
+// ─── SHEETS API ───────────────────────────────────────────────
+async function sheetsGet(range) {
+  const token = await getAccessToken();
+  const url = `https://sheets.googleapis.com/v4/spreadsheets/${SHEET_ID}/values/${encodeURIComponent(range)}`;
+  const res = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
+  if (!res.ok) throw new Error('Sheets read failed: ' + res.status);
+  return res.json();
+}
+
+async function sheetsUpdate(range, values) {
+  const token = await getAccessToken();
+  const url = `https://sheets.googleapis.com/v4/spreadsheets/${SHEET_ID}/values/${encodeURIComponent(range)}?valueInputOption=USER_ENTERED`;
+  const res = await fetch(url, {
+    method: 'PUT',
+    headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ range, majorDimension: 'ROWS', values })
+  });
+  if (!res.ok) throw new Error('Sheets write failed: ' + res.status);
+  return res.json();
+}
+
+async function sheetsAppend(values) {
+  const token = await getAccessToken();
+  const range = `${SHEET_NAME}!A:L`;
+  const url = `https://sheets.googleapis.com/v4/spreadsheets/${SHEET_ID}/values/${encodeURIComponent(range)}:append?valueInputOption=USER_ENTERED&insertDataOption=INSERT_ROWS`;
+  const res = await fetch(url, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ range, majorDimension: 'ROWS', values })
+  });
+  if (!res.ok) throw new Error('Sheets append failed: ' + res.status);
+  return res.json();
+}
+
+// ─── LOAD DATA ────────────────────────────────────────────────
+async function loadFromSheet() {
+  setSyncStatus('syncing', 'Syncing...');
+  try {
+    const data = await sheetsGet(`${SHEET_NAME}!A:L`);
+    const rows = data.values || [];
+    // Skip header row (row 0)
+    jobs = rows.slice(1).map((row, i) => ({
+      id: i + 2, // actual sheet row number (1-indexed, +1 for header)
+      sheetRow: i + 2,
+      status:        row[COL.status]        || '',
+      receivingDate: row[COL.receivingDate] || '',
+      name:          row[COL.name]          || '',
+      mobile:        row[COL.mobile]        || '',
+      make:          row[COL.make]          || '',
+      model:         row[COL.model]         || '',
+      plate:         row[COL.plate]         || '',
+      jobType:       row[COL.jobType]       || '',
+      serviceCenter: row[COL.serviceCenter] || '',
+      partsETA:      row[COL.partsETA]      || '',
+      carETD:        row[COL.carETD]        || '',
+      comeBack:      row[COL.comeBack]      || '',
+    })).filter(j => j.name || j.status);
+
+    populateFilters();
+    renderStats();
+    renderTable();
+    setSyncStatus('live', `Synced · ${new Date().toLocaleTimeString('en-GB', {hour:'2-digit',minute:'2-digit'})}`);
+  } catch (err) {
+    setSyncStatus('error', 'Sync failed');
+    showToast('Could not load sheet: ' + err.message, 'error');
+    console.error(err);
+  }
+}
+
+// ─── WRITE BACK ───────────────────────────────────────────────
+async function writeJobToSheet(job) {
+  const row = Array(TOTAL_COLS).fill('');
+  row[COL.status]        = job.status || '';
+  row[COL.receivingDate] = job.receivingDate || '';
+  row[COL.name]          = job.name || '';
+  row[COL.mobile]        = job.mobile || '';
+  row[COL.email]         = job.email || '';
+  row[COL.make]          = job.make || '';
+  row[COL.model]         = job.model || '';
+  row[COL.plate]         = job.plate || '';
+  row[COL.jobType]       = job.jobType || '';
+  row[COL.serviceCenter] = job.serviceCenter || '';
+  row[COL.partsETA]      = job.partsETA || '';
+  row[COL.carETD]        = job.carETD || '';
+  row[COL.comeBack]      = job.comeBack || '';
+  row[COL.revenue]       = job.revenue !== null ? job.revenue : '';
+
+  if (job.sheetRow) {
+    const range = `${SHEET_NAME}!A${job.sheetRow}:N${job.sheetRow}`;
+    await sheetsUpdate(range, [row]);
+  } else {
+    await sheetsAppend([row]);
+  }
+}
+
+// ─── HELPERS ─────────────────────────────────────────────────
+function parseDate(str) {
+  if (!str || str === 'NA' || str === '') return null;
+  const p = str.split('/');
+  if (p.length !== 3) return null;
+  const y = parseInt(p[2]) > 1000 ? parseInt(p[2]) : 2000 + parseInt(p[2]);
+  return new Date(y, parseInt(p[1])-1, parseInt(p[0]));
+}
+function fmtDate(d) { if (!d) return ''; return d.toLocaleDateString('en-GB', {day:'2-digit',month:'short',year:'2-digit'}); }
+function toInputDate(d) { if (!d) return ''; return d.toISOString().split('T')[0]; }
+function fromInputDate(s) { if (!s) return null; return new Date(s); }
+function fmtSheet(d) { if (!d) return ''; return `${d.getDate()}/${d.getMonth()+1}/${d.getFullYear()}`; }
+
+function statusClass(s) {
+  if (!s) return 's-other';
+  const l = s.toLowerCase();
+  if (l === 'wip') return 's-wip';
+  if (l.includes('awaiting approval')) return 's-awaiting-approval';
+  if (l.includes('awaiting payment')) return 's-awaiting-payment';
+  if (l.includes('awaiting parts')) return 's-awaiting-parts';
+  if (l.includes('awaiting estimate')) return 's-awaiting-estimate';
+  if (l === 'delivered') return 's-delivered';
+  if (l === 'review') return 's-review';
+  if (l.includes('ag') || l.includes('autoguard')) return 's-ag';
+  if (l.includes('aaa')) return 's-aaa';
+  if (l === 'tabby') return 's-tabby';
+  if (l === 'diagnosis') return 's-diagnosis';
+  return 's-other';
+}
+
+function isOverdue(j) {
+  if (j.status === 'Delivered') return false;
+  const etd = parseDate(j.carETD);
+  if (!etd) return false;
+  const today = new Date(); today.setHours(0,0,0,0);
+  return etd < today;
+}
+
+function setSyncStatus(state, label) {
+  const dot = document.getElementById('syncDot');
+  dot.className = 'sync-dot ' + state;
+  document.getElementById('syncLabel').textContent = label;
+}
+
+function showToast(msg, type = 'success') {
+  const t = document.getElementById('toast');
+  t.textContent = (type === 'success' ? '✓ ' : '✕ ') + msg;
+  t.className = `toast ${type} show`;
+  setTimeout(() => t.className = 'toast', 3000);
+}
+
+function sortBy(key) {
+  if (sortKey === key) sortDir *= -1; else { sortKey = key; sortDir = 1; }
+  renderTable();
+}
+
+function populateFilters() {
+  const sf = document.getElementById('filterStatus');
+  const curStatus = sf.value;
+  sf.innerHTML = '<option value="">All Statuses</option>';
+  STATUSES.forEach(s => { const o = document.createElement('option'); o.value=s; o.textContent=s; sf.appendChild(o); });
+  sf.value = curStatus;
+
+  const tf = document.getElementById('filterType');
+  const curType = tf.value;
+  tf.innerHTML = '<option value="">All Job Types</option>';
+  const jt = [...new Set(jobs.map(j=>j.jobType).filter(Boolean))].sort();
+  jt.forEach(t => { const o = document.createElement('option'); o.value=t; o.textContent=t; tf.appendChild(o); });
+  tf.value = curType;
+
+  const mf = document.getElementById('fStatus');
+  mf.innerHTML = '';
+  STATUSES.forEach(s => { const o = document.createElement('option'); o.value=s; o.textContent=s; mf.appendChild(o); });
+}
+
+function getFiltered() {
+  const search = document.getElementById('searchInput').value.toLowerCase();
+  const status = document.getElementById('filterStatus').value;
+  const center = document.getElementById('filterCenter').value;
+  const type   = document.getElementById('filterType').value;
+  const cb     = document.getElementById('filterComeback').value;
+  return jobs.filter(j => {
+    if (status && j.status !== status) return false;
+    if (center && j.serviceCenter !== center) return false;
+    if (type && j.jobType !== type) return false;
+    if (cb && j.comeBack !== cb) return false;
+    if (search) {
+      const h = [j.name,j.mobile,j.make,j.model,j.plate,j.serviceCenter].join(' ').toLowerCase();
+      if (!h.includes(search)) return false;
+    }
+    return true;
+  }).sort((a,b) => {
+    let va = a[sortKey]||'', vb = b[sortKey]||'';
+    if (['receivingDate','carETD'].includes(sortKey)) { va=parseDate(va)||new Date(0); vb=parseDate(vb)||new Date(0); }
+    return va<vb ? -sortDir : va>vb ? sortDir : 0;
+  });
+}
+
+function renderStats() {
+  const active    = jobs.filter(j=>j.status!=='Delivered').length;
+  const delivered = jobs.filter(j=>j.status==='Delivered').length;
+  const awaiting  = jobs.filter(j=>j.status.toLowerCase().includes('awaiting')).length;
+  const cb        = jobs.filter(j=>j.comeBack==='Yes').length;
+  const wip       = jobs.filter(j=>j.status==='WIP').length;
+  document.getElementById('statsBar').innerHTML = `
+    <div class="stat-card"><div class="stat-label">Total Jobs</div><div class="stat-value">${jobs.length}</div><div class="stat-sub">${active} active · ${delivered} delivered</div></div>
+    <div class="stat-card"><div class="stat-label">WIP</div><div class="stat-value" style="color:#60a5fa">${wip}</div><div class="stat-sub">currently in progress</div></div>
+    <div class="stat-card"><div class="stat-label">Awaiting Action</div><div class="stat-value" style="color:#fbbf24">${awaiting}</div><div class="stat-sub">approval, payment or parts</div></div>
+    <div class="stat-card"><div class="stat-label">Come Backs</div><div class="stat-value" style="color:#ff6b6b">${cb}</div><div class="stat-sub">warranty / quality returns</div></div>
+  `;
+}
+
+function renderTable() {
+  const filtered = getFiltered();
+  const overdue  = filtered.filter(isOverdue);
+  const banner   = document.getElementById('overdueBanner');
+  if (overdue.length) { banner.style.display='flex'; document.getElementById('overdueCount').textContent=overdue.length; }
+  else banner.style.display='none';
+  document.getElementById('jobCount').textContent = filtered.length;
+
+  const tbody = document.getElementById('tableBody');
+  if (!filtered.length) {
+    tbody.innerHTML = `<tr><td colspan="10"><div class="empty-state"><h3>No jobs found</h3><p>Try adjusting your filters.</p></div></td></tr>`;
+    return;
+  }
+
+  tbody.innerHTML = filtered.map(j => {
+    const etd  = parseDate(j.carETD);
+    const od   = isOverdue(j);
+    const sc   = statusClass(j.status);
+    const opts = STATUSES.map(s=>`<option value="${s}"${s===j.status?' selected':''}>${s}</option>`).join('');
+    return `<tr class="${od?'overdue':''}" data-id="${j.id}">
+      <td><select class="status-select ${sc}" onchange="updateStatus(${j.id},this.value)" style="background:transparent">${opts}</select></td>
+      <td class="date-cell">${j.receivingDate ? fmtDate(parseDate(j.receivingDate)) : '—'}</td>
+      <td><div class="customer-name">${j.name||'—'}</div><div class="customer-mobile">${j.mobile||''}</div></td>
+      <td><div class="car-make">${j.make||''} ${j.model||''}</div><div class="car-plate">${j.plate&&j.plate!=='NA'?j.plate:''}</div></td>
+      <td style="color:var(--muted);font-size:12px">${j.jobType||'—'}</td>
+      <td><span class="center-name">${j.serviceCenter||'—'}</span></td>
+      <td class="date-cell${od?' date-overdue':''}">${etd?fmtDate(etd):'—'}${od?' ⚠':''}</td>
+      <td style="text-align:center">${j.comeBack==='Yes'?'⚠️':''}</td>
+      <td><button class="action-btn" onclick="editJob(${j.id})">Edit</button></td>
+    </tr>`;
+  }).join('');
+}
+
+// ─── ACTIONS ─────────────────────────────────────────────────
+async function updateStatus(id, val) {
+  const j = jobs.find(x=>x.id===id);
+  if (!j) return;
+  j.status = val;
+  renderStats(); renderTable();
+  setSyncStatus('syncing','Saving...');
+  try {
+    await writeJobToSheet(j);
+    setSyncStatus('live', `Saved · ${new Date().toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'})}`);
+    showToast('Status updated');
+  } catch(e) { setSyncStatus('error','Save failed'); showToast('Save failed: '+e.message,'error'); }
+}
+
+function openModal(id=null) {
+  editingId = id;
+  document.getElementById('modalTitle').textContent = id ? '✦ Edit Job' : '✦ New Job';
+  if (id) {
+    const j = jobs.find(x=>x.id===id);
+    document.getElementById('fStatus').value    = j.status||'';
+    document.getElementById('fDate').value      = j.receivingDate ? toInputDate(parseDate(j.receivingDate)) : '';
+    document.getElementById('fName').value      = j.name||'';
+    document.getElementById('fMobile').value    = j.mobile||'';
+    document.getElementById('fMake').value      = j.make||'';
+    document.getElementById('fModel').value     = j.model||'';
+    document.getElementById('fPlate').value     = j.plate||'';
+    document.getElementById('fJobType').value   = j.jobType||'';
+    document.getElementById('fCenter').value    = j.serviceCenter||'';
+    document.getElementById('fPartsETA').value  = j.partsETA ? toInputDate(parseDate(j.partsETA)) : '';
+    document.getElementById('fETD').value       = j.carETD ? toInputDate(parseDate(j.carETD)) : '';
+    document.getElementById('fComeBack').value  = j.comeBack||'No';
+  } else {
+    ['fName','fMobile','fMake','fModel','fPlate','fPartsETA','fETD'].forEach(id=>document.getElementById(id).value='');
+    document.getElementById('fDate').value   = new Date().toISOString().split('T')[0];
+    document.getElementById('fStatus').value = 'Awaiting Approval';
+    document.getElementById('fComeBack').value = 'No';
+  }
+  document.getElementById('modalOverlay').classList.add('open');
+}
+
+function editJob(id) { openModal(id); }
+function closeModal() { document.getElementById('modalOverlay').classList.remove('open'); editingId=null; }
+
+async function saveJob() {
+  const btn = document.getElementById('saveBtn');
+  btn.disabled = true; btn.textContent = 'Saving...';
+  const data = {
+    status:        document.getElementById('fStatus').value,
+    receivingDate: fmtSheet(fromInputDate(document.getElementById('fDate').value)),
+    name:          document.getElementById('fName').value,
+    mobile:        document.getElementById('fMobile').value,
+    make:          document.getElementById('fMake').value,
+    model:         document.getElementById('fModel').value,
+    plate:         document.getElementById('fPlate').value,
+    jobType:       document.getElementById('fJobType').value,
+    serviceCenter: document.getElementById('fCenter').value,
+    partsETA:      fmtSheet(fromInputDate(document.getElementById('fPartsETA').value)),
+    carETD:        fmtSheet(fromInputDate(document.getElementById('fETD').value)),
+    comeBack:      document.getElementById('fComeBack').value,
+  };
+  try {
+    if (editingId) {
+      const idx = jobs.findIndex(j=>j.id===editingId);
+      jobs[idx] = { ...jobs[idx], ...data };
+      await writeJobToSheet(jobs[idx]);
+      showToast('Job updated');
+    } else {
+      const newJob = { ...data, id: Date.now(), sheetRow: null };
+      await sheetsAppend([buildRow(newJob)]);
+      jobs.push(newJob);
+      showToast('Job added to sheet');
+    }
+    closeModal(); renderStats(); renderTable();
+    setSyncStatus('live', `Saved · ${new Date().toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'})}`);
+  } catch(e) {
+    setSyncStatus('error','Save failed');
+    showToast('Save failed: '+e.message,'error');
+  }
+  btn.disabled=false; btn.textContent='Save Job';
+}
+
+function buildRow(job) {
+  const row = Array(TOTAL_COLS).fill('');
+  Object.entries(COL).forEach(([k,i]) => { row[i] = job[k]!=null ? job[k] : ''; });
+  return row;
+}
+
+function exportCSV() {
+  const headers=['Status','Date In','Customer','Mobile','Make','Model','Plate','Job Type','Center','Parts ETA','Car ETD','Come Back'];
+  const rows=jobs.map(j=>[j.status,j.receivingDate,j.name,j.mobile,j.make,j.model,j.plate,j.jobType,j.serviceCenter,j.partsETA,j.carETD,j.comeBack]);
+  const csv=[headers,...rows].map(r=>r.map(v=>`"${(v||'').toString().replace(/"/g,'""')}"`).join(',')).join('\n');
+  const a=document.createElement('a'); a.href='data:text/csv;charset=utf-8,'+encodeURIComponent(csv);
+  a.download=`nexauto-jobs-${new Date().toISOString().split('T')[0]}.csv`; a.click();
+}
+
+document.getElementById('modalOverlay').addEventListener('click', e=>{ if(e.target===document.getElementById('modalOverlay'))closeModal(); });
+
+// ─── INIT ─────────────────────────────────────────────────────
+(async () => {
+  document.getElementById('loadingText').textContent = 'Authenticating...';
+  try {
+    await getAccessToken();
+    document.getElementById('loadingText').textContent = 'Loading jobs from Google Sheets...';
+    await loadFromSheet();
+    document.getElementById('loadingScreen').classList.add('hidden');
+    document.getElementById('appShell').style.display = 'block';
+  } catch(e) {
+    document.getElementById('loadingText').textContent = '✕ Error: ' + e.message;
+    console.error(e);
+  }
+})();
+</script>
+</body>
+</html>
