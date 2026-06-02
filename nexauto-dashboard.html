@@ -550,7 +550,55 @@ function renderOverview() {
   });
   const topBrands = Object.entries(brandMap).sort((a,b)=>b[1].contracts-a[1].contracts).slice(0,8);
 
+  // Today's Business
+  const todayStr = new Date().toLocaleDateString('en-GB'); // DD/MM/YYYY
+  const todayFull = new Date().toLocaleDateString('en-GB', {weekday:'long', day:'numeric', month:'long', year:'numeric'});
+  function matchesToday(dateStr) {
+    if (!dateStr) return false;
+    const d = parseSheetDate(dateStr);
+    if (!d) return false;
+    return d.toLocaleDateString('en-GB') === todayStr;
+  }
+  const wToday = warrantyData.filter(r => matchesToday(r.saleDate));
+  const sToday = serviceData.filter(r => matchesToday(r.saleDate));
+  const todayWRev = wToday.reduce((s,r)=>s+r.price,0);
+  const todaySRev = sToday.reduce((s,r)=>s+r.sellingPrice,0);
+  const todayWGP = wToday.reduce((s,r)=>s+r.grossProfit,0);
+  const todaySGP = sToday.reduce((s,r)=>s+r.grossProfit,0);
+  const todayRev = todayWRev + todaySRev;
+  const todayGP = todayWGP + todaySGP;
+  const todayTotal = wToday.length + sToday.length;
+
   document.getElementById('mainContent').innerHTML = `
+    <!-- TODAY'S BUSINESS -->
+    <div style="background:linear-gradient(135deg,#111118,#1a1a25);border:1px solid var(--accent)33;border-left:3px solid var(--accent);border-radius:12px;padding:20px 24px;margin-bottom:20px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:16px">
+      <div>
+        <div style="font-family:'DM Mono',monospace;font-size:10px;text-transform:uppercase;letter-spacing:1.2px;color:var(--accent);margin-bottom:4px">● Today</div>
+        <div style="font-family:'Syne',sans-serif;font-size:13px;color:var(--muted)">${todayFull}</div>
+      </div>
+      <div style="display:flex;gap:32px;flex-wrap:wrap">
+        <div style="text-align:center">
+          <div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:0.7px;font-family:'DM Mono',monospace;margin-bottom:4px">Warranty Issued</div>
+          <div style="font-family:'Syne',sans-serif;font-size:26px;font-weight:800;color:var(--warranty)">${wToday.length}</div>
+        </div>
+        <div style="text-align:center">
+          <div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:0.7px;font-family:'DM Mono',monospace;margin-bottom:4px">Service Issued</div>
+          <div style="font-family:'Syne',sans-serif;font-size:26px;font-weight:800;color:var(--service)">${sToday.length}</div>
+        </div>
+        <div style="text-align:center">
+          <div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:0.7px;font-family:'DM Mono',monospace;margin-bottom:4px">Revenue</div>
+          <div style="font-family:'Syne',sans-serif;font-size:26px;font-weight:800;color:var(--accent)">${todayRev>0?'AED '+fmt(todayRev):'—'}</div>
+        </div>
+        <div style="text-align:center">
+          <div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:0.7px;font-family:'DM Mono',monospace;margin-bottom:4px">Gross Profit</div>
+          <div style="font-family:'Syne',sans-serif;font-size:26px;font-weight:800;color:var(--green)">${todayGP>0?'AED '+fmt(todayGP):'—'}</div>
+        </div>
+      </div>
+      <div style="font-family:'DM Mono',monospace;font-size:11px;color:var(--muted);text-align:right">
+        ${todayTotal > 0 ? `${todayTotal} contract${todayTotal>1?'s':''} today` : 'No contracts recorded today'}
+      </div>
+    </div>
+
     <!-- SUMMARY CARDS -->
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:24px">
       <div class="overview-card" style="border-top:2px solid var(--warranty)">
