@@ -212,8 +212,8 @@ const WC = {
   make:11, model:12, modelYear:13, vin:14, plate:15, mileage:16,
   policyNumber:17, status:18, warrantyStart:19, warrantyEnd:20,
   planName:21, coverageType:22, coverageDuration:23, mileageLimit:24,
-  price:25, notes:26, rsa:27, reported:28, rsaDuration:29, rac:30,
-  racDuration:31, costPrice:32, partnerPayment:33, rsaCostPrice:34,
+  price:26, notes:27, rsa:28, reported:29, rsaDuration:30, rac:31,
+  racDuration:32, costPrice:33, partnerPayment:34, rsaCostPrice:35,
   grossProfit:36, paymentMethod:37, paymentStatus:38
 };
 
@@ -517,13 +517,14 @@ function renderOverview() {
   const wMonthlyRev = monthlyRevenue(warrantyData, 'price');
   const sMonthlyRev = monthlyRevenue(serviceData, 'sellingPrice');
 
-  // Product mix — combine planName (warranty) + contractType (service)
+  // Product mix — only show defined products
+  const PRODUCT_ORDER = ['ASSURE90','DRIVE','DRIVE PRO','CHARGE'];
   const productMap = {};
-  warrantyData.forEach(r => { const k=r.planName||'Other'; productMap[k]=(productMap[k]||0)+1; });
-  serviceData.forEach(r => { const k=r.contractType||'Other'; productMap[k]=(productMap[k]||0)+1; });
-  const PRODUCT_ORDER = ['ASSURE90','DRIVE','DRIVE PRO','CHARGE','DRIVE CARE'];
-  const productLabels = [...PRODUCT_ORDER.filter(p=>productMap[p]), ...Object.keys(productMap).filter(k=>!PRODUCT_ORDER.includes(k)&&productMap[k])];
-  const productVals = productLabels.map(l=>productMap[l]||0);
+  PRODUCT_ORDER.forEach(p => productMap[p] = 0);
+  warrantyData.forEach(r => { if (r.planName && PRODUCT_ORDER.includes(r.planName)) productMap[r.planName]++; });
+  serviceData.forEach(r => { if (r.contractType && PRODUCT_ORDER.includes(r.contractType)) productMap[r.contractType]++; });
+  const productLabels = PRODUCT_ORDER.filter(p => productMap[p] > 0);
+  const productVals = productLabels.map(l => productMap[l]);
 
   // Distributor performance
   const distMap = {};
