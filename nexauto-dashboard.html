@@ -518,7 +518,7 @@ function renderOverview() {
   const sMonthlyRev = monthlyRevenue(serviceData, 'sellingPrice');
 
   // Product mix — only show defined products
-  const PRODUCT_ORDER = ['ASSURE90','DRIVE','DRIVE PRO','CHARGE'];
+  const PRODUCT_ORDER = ['Assure90','Drive','Drive PRO','Charge'];
   const productMap = {};
   PRODUCT_ORDER.forEach(p => productMap[p] = 0);
   warrantyData.forEach(r => { if (r.planName && PRODUCT_ORDER.includes(r.planName)) productMap[r.planName]++; });
