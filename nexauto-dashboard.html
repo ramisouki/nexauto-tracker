@@ -694,22 +694,6 @@ function renderOverview() {
   );
 }
 
-    MONTHS.map(m=>m.slice(0,3)),
-    [
-      { label: 'Warranty', data: wMonthly, backgroundColor: '#38bdf830', borderColor: '#38bdf8', borderWidth: 2, borderRadius: 4 },
-      { label: 'Service', data: sMonthly, backgroundColor: '#a78bfa30', borderColor: '#a78bfa', borderWidth: 2, borderRadius: 4 }
-    ]
-  );
-
-  const COLORS = ['#38bdf8','#a78bfa','#e8ff47','#4ade80','#fb923c','#f472b6'];
-  makeChart('overviewDist', 'doughnut', distLabels, [{
-    data: distVals,
-    backgroundColor: COLORS.slice(0, distLabels.length),
-    borderWidth: 0,
-    hoverOffset: 6
-  }]);
-}
-
 // ─── WARRANTY TAB ─────────────────────────────────────────────
 function renderWarranty() {
   const filtered = applyFilters(warrantyData);
