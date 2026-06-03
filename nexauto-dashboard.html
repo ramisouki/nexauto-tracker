@@ -1042,6 +1042,14 @@ Respond with exactly 4 bullet points. Each bullet: one bold insight title (5 wor
       })
     });
     const data = await res.json();
+
+    // Show actual error if API returned one
+    if (data.error || data.type === 'error') {
+      const errMsg = data.error?.message || data.error || JSON.stringify(data);
+      el.innerHTML = `<div style="color:var(--red);font-size:13px">API Error: ${errMsg}</div>`;
+      return;
+    }
+
     const text = data.content?.[0]?.text || '';
 
     if (!text) {
