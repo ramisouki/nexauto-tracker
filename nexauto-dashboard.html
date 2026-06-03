@@ -1044,18 +1044,27 @@ Respond with exactly 4 bullet points. Each bullet: one bold insight title (5 wor
     const data = await res.json();
     const text = data.content?.[0]?.text || '';
 
-    // Parse bullet points
-    const bullets = text.split('\n').filter(l => l.trim().startsWith('•') || l.trim().startsWith('-') || l.trim().match(/^\d\./));
-    const rendered = bullets.map(b => {
-      const clean = b.replace(/^[•\-\d\.]\s*/,'').trim();
+    if (!text) {
+      el.innerHTML = `<div style="color:var(--red);font-size:13px">No response received. Check API key.</div>`;
+      return;
+    }
+
+    // Split by newlines and filter for lines with content
+    const lines = text.split('\n').map(l => l.trim()).filter(l => l.length > 0);
+    const bullets = lines.filter(l => l.startsWith('•') || l.startsWith('-') || l.startsWith('*') || l.match(/^\d[\.\)]/));
+
+    const itemsToRender = bullets.length > 0 ? bullets : lines;
+
+    const rendered = itemsToRender.map(b => {
+      const clean = b.replace(/^[•\-\*\d\.\)]\s*/,'').trim();
       const withBold = clean.replace(/\*\*(.*?)\*\*/g, '<strong style="color:var(--accent)">$1</strong>');
-      return `<div style="display:flex;gap:10px;align-items:flex-start;padding:10px 0;border-bottom:1px solid var(--border)">
-        <div style="color:var(--accent);font-size:16px;line-height:1;flex-shrink:0;margin-top:1px">✦</div>
+      return `<div style="display:flex;gap:10px;align-items:flex-start;padding:12px 0;border-bottom:1px solid var(--border)">
+        <div style="color:var(--accent);font-size:14px;flex-shrink:0;margin-top:2px">✦</div>
         <div style="font-size:13px;line-height:1.6;color:var(--text)">${withBold}</div>
       </div>`;
     }).join('');
 
-    el.innerHTML = rendered || `<div style="color:var(--muted);font-size:13px">${text}</div>`;
+    el.innerHTML = `<div style="padding-top:4px">${rendered}</div>`;
   } catch(e) {
     el.innerHTML = `<div style="color:var(--red);font-size:13px">Could not generate insights. Check console for details.</div>`;
     console.error(e);
