@@ -222,13 +222,13 @@ const WC = {
 };
 
 const SC = {
-  num:0, month:1, year:2, saleDate:3, distributor:4, salesExec:5,
-  customerName:6, customerMobile:7, customerEmail:8, make:9, model:10,
-  modelYear:11, plate:12, cylinder:13, vin:14, scSerial:15, zohoSerial:16,
-  contractType:17, numServices:18, inclusions:19, duration:20,
-  startDate:21, endDate:22, startMileage:23, expiryMileage:24,
-  status:25, notes:26, sellingPrice:27, provisionedCost:28,
-  pendingAmount:29, grossProfit:30, paymentMethod:31, paymentStatus:32
+  num:0, month:1, year:2, inputDate:3, saleDate:4, distributor:5, salesExec:6,
+  customerName:7, customerMobile:8, customerEmail:9, make:10, model:11,
+  modelYear:12, plate:13, cylinder:14, vin:15, scSerial:16, zohoSerial:17,
+  contractType:18, numServices:19, inclusions:20, duration:21,
+  startDate:22, endDate:23, startMileage:24, expiryMileage:25,
+  status:26, notes:27, sellingPrice:28, provisionedCost:29,
+  pendingAmount:30, grossProfit:31, paymentMethod:32, paymentStatus:33
 };
 
 let warrantyData = [];
@@ -280,7 +280,7 @@ async function loadData() {
   setSyncStatus('syncing', 'Loading...');
   const [wRes, sRes] = await Promise.all([
     sheetsGet(`Warranty Contracts!A:AN`),
-    sheetsGet(`Service Contracts!A:AG`)
+    sheetsGet(`Service Contracts!A:AH`)
   ]);
 
   warrantyData = (wRes.values || []).slice(1).map((row, i) => ({
@@ -320,6 +320,7 @@ async function loadData() {
     num: row[SC.num] || '',
     month: row[SC.month] || '',
     year: row[SC.year] || '',
+    inputDate: row[SC.inputDate] || '',
     saleDate: row[SC.saleDate] || '',
     distributor: row[SC.distributor] || '',
     salesExec: row[SC.salesExec] || '',
@@ -565,7 +566,7 @@ function renderOverview() {
     return d.toLocaleDateString('en-GB') === todayStr;
   }
   const wToday = warrantyData.filter(r => matchesToday(r.inputDate));
-  const sToday = serviceData.filter(r => matchesToday(r.saleDate));
+  const sToday = serviceData.filter(r => matchesToday(r.inputDate));
   const todayWRev = wToday.reduce((s,r)=>s+r.price,0);
   const todaySRev = sToday.reduce((s,r)=>s+r.sellingPrice,0);
   const todayWGP = wToday.reduce((s,r)=>s+r.grossProfit,0);
