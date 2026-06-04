@@ -415,8 +415,9 @@ function fmtDec(n) { return (n||0).toLocaleString('en-AE', {minimumFractionDigit
 
 function parseSheetDate(str) {
   if (!str) return null;
-  // Try DD/MM/YYYY or D/M/YYYY
-  const p = str.split('/');
+  // Handle DD/MM/YYYY or DD-MM-YYYY
+  const normalized = str.replace(/-/g, '/');
+  const p = normalized.split('/');
   if (p.length === 3) {
     const y = parseInt(p[2]) < 100 ? 2000+parseInt(p[2]) : parseInt(p[2]);
     return new Date(y, parseInt(p[1])-1, parseInt(p[0]));
