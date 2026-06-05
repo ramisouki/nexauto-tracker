@@ -1670,12 +1670,15 @@ function renderService() {
     })()}
   `;
 
-  makeChart('sMonthlyChart', 'bar',
-    MONTHS.map(m=>m.slice(0,3)),
-    [{ label:'Contracts', data:monthlyCount(filtered), backgroundColor:'#85b8cc30', borderColor:'#85b8cc', borderWidth:2, borderRadius:4 }]
-  );
-  const COLORS = ['#00dbfc','#85b8cc','#4ade80','#fb923c','#f472b6','#fbbf24'];
-  makeChart('sTypeChart', 'doughnut', typeLabels, [{ data:typeVals, backgroundColor:COLORS.slice(0,typeLabels.length), borderWidth:0, hoverOffset:6 }]);
+  // All service charts in setTimeout to ensure DOM is ready
+  setTimeout(() => {
+    makeChart('sMonthlyChart', 'bar',
+      MONTHS.map(m=>m.slice(0,3)),
+      [{ label:'Contracts', data:monthlyCount(filtered), backgroundColor:'#85b8cc30', borderColor:'#85b8cc', borderWidth:2, borderRadius:4 }]
+    );
+    const COLORS = ['#00dbfc','#85b8cc','#4ade80','#fb923c','#f472b6','#fbbf24'];
+    makeChart('sTypeChart', 'doughnut', typeLabels, [{ data:typeVals, backgroundColor:COLORS.slice(0,typeLabels.length), borderWidth:0, hoverOffset:6 }]);
+  }, 100);
 
   // Service distributor data
   const sDistStats = {};
@@ -1696,7 +1699,7 @@ function renderService() {
       [{ label:'Revenue (AED)', data:sDistEntries.map(([,v])=>v.revenue), backgroundColor:'#85b8cc25', borderColor:'#85b8cc', borderWidth:2, borderRadius:4 }],
       { indexAxis:'y', plugins:{ legend:{ display:false } } }
     );
-  }, 50);
+  }, 200);
 
   // Duration chart
   setTimeout(() => {
@@ -1716,7 +1719,7 @@ function renderService() {
       [{ data: stats.map(s=>s.contracts), backgroundColor: stats.map(s=>s.color), borderWidth:0, hoverOffset:6 }],
       { plugins:{ legend:{ display:false } } }
     );
-  }, 50);
+  }, 300);
 }
 
 // ─── AI INSIGHTS ──────────────────────────────────────────────
