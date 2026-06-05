@@ -460,6 +460,13 @@ function showToast(msg, type='error') {
   setTimeout(() => t.className='toast', 3500);
 }
 
+function monthlyCount(data) {
+  const counts = {};
+  MONTHS.forEach(m => counts[m] = 0);
+  data.forEach(r => { if (r.month && counts[r.month] !== undefined) counts[r.month]++; });
+  return MONTHS.map(m => counts[m]);
+}
+
 function monthlyRevenue(data, revenueKey) {
   const totals = {};
   MONTHS.forEach(m => totals[m] = 0);
