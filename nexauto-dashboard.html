@@ -1228,6 +1228,43 @@ function sortDistTable(key) {
   buildDistTable(key);
 }
 
+// ─── SERVICE DISTRIBUTOR TABLE ────────────────────────────────
+function sortSDistTable(sortKey) {
+  const sDistStats = window._sSDistStats;
+  if (!sDistStats) return;
+  const MEDALS = ['🥇','🥈','🥉'];
+  const rows = Object.entries(sDistStats).map(([name, d]) => ({
+    name,
+    sContracts: d.contracts,
+    sRevenue: d.revenue,
+    sGp: d.gp,
+    sGpPct: d.revenue ? d.gp/d.revenue*100 : 0,
+    avg: d.contracts ? d.revenue/d.contracts : 0
+  })).sort((a,b) => b[sortKey] - a[sortKey]);
+
+  // Update button styles
+  ['sRevenue','sContracts','sGp','sGpPct'].forEach(k => {
+    const btn = document.getElementById(`sDistSort_${k}`);
+    if (!btn) return;
+    btn.style.background = k===sortKey ? 'var(--accent)' : 'var(--surface2)';
+    btn.style.color = k===sortKey ? '#03062b' : 'var(--muted)';
+  });
+
+  const tbody = document.getElementById('sDistTableBody');
+  if (!tbody) return;
+  tbody.innerHTML = rows.map((r, i) => `
+    <tr>
+      <td style="font-size:18px;text-align:center">${MEDALS[i]||`<span style="color:var(--muted);font-size:13px">#${i+1}</span>`}</td>
+      <td style="font-weight:600">${r.name}</td>
+      <td><span class="count-pill">${r.sContracts}</span></td>
+      <td class="price-cell">${fmt(r.sRevenue)}</td>
+      <td style="color:var(--green);font-family:'Inter',monospace">${fmt(r.sGp)}</td>
+      <td><span style="color:${r.sGpPct>=30?'var(--green)':r.sGpPct>=15?'#fbbf24':'var(--red)'};font-weight:600">${Math.round(r.sGpPct)}%</span></td>
+      <td class="price-cell">${fmt(r.avg)}</td>
+    </tr>
+  `).join('');
+}
+
 // ─── SERVICE TAB ──────────────────────────────────────────────
 function renderService() {
   const filtered = applyFilters(serviceData);
@@ -1268,6 +1305,63 @@ function renderService() {
       </div>
     </div>
 
+    <!-- SERVICE PRODUCT PERFORMANCE -->
+    <div class="table-section" style="margin-bottom:20px">
+      <div class="table-header"><h3>Service Contract Product Performance</h3></div>
+      <div class="table-wrap">
+        <table style="min-width:700px">
+          <thead><tr>
+            <th>Product</th><th>Contracts Sold</th><th>Revenue (AED)</th>
+            <th>Gross Profit (AED)</th><th>GP %</th><th>Avg Contract Value</th><th>Revenue Share</th>
+          </tr></thead>
+          <tbody>
+            ${(() => {
+              const PRODUCTS = ['European 12 Month','Asian 12 Month','Asian 36 Months','Asian 60 Month'];
+              const stats = {};
+              PRODUCTS.forEach(p => stats[p] = {contracts:0, revenue:0, gp:0});
+              filtered.forEach(r => {
+                if (r.contractType && stats[r.contractType] !== undefined) {
+                  stats[r.contractType].contracts++;
+                  stats[r.contractType].revenue += r.sellingPrice||0;
+                  stats[r.contractType].gp += r.grossProfit||0;
+                }
+              });
+              const rows = PRODUCTS.map(p=>({name:p,...stats[p]})).filter(p=>p.contracts>0).sort((a,b)=>b.revenue-a.revenue);
+              const totalRev = rows.reduce((s,r)=>s+r.revenue,0);
+              const maxRev  = Math.max(...rows.map(r=>r.revenue));
+              const maxGP   = Math.max(...rows.map(r=>r.gp));
+              const maxAvg  = Math.max(...rows.map(r=>r.contracts?r.revenue/r.contracts:0));
+              if (!rows.length) return `<tr><td colspan="7"><div class="empty-state" style="padding:30px"><h3>No matching products found</h3></div></td></tr>`;
+              return rows.map(r => {
+                const gpPct = r.revenue ? Math.round(r.gp/r.revenue*100) : 0;
+                const avg   = r.contracts ? r.revenue/r.contracts : 0;
+                const share = totalRev ? Math.round(r.revenue/totalRev*100) : 0;
+                const badges = [
+                  r.revenue===maxRev ? `<span style="background:#00dbfc18;color:#00dbfc;border:1px solid #00dbfc33;border-radius:20px;padding:2px 7px;font-size:10px;font-weight:600;margin-left:6px">Top Revenue</span>` : '',
+                  r.gp===maxGP       ? `<span style="background:#4ade8018;color:#4ade80;border:1px solid #4ade8033;border-radius:20px;padding:2px 7px;font-size:10px;font-weight:600;margin-left:6px">Highest GP</span>` : '',
+                  avg===maxAvg       ? `<span style="background:#fb923c18;color:#fb923c;border:1px solid #fb923c33;border-radius:20px;padding:2px 7px;font-size:10px;font-weight:600;margin-left:6px">Highest ACV</span>` : '',
+                ].join('');
+                return `<tr>
+                  <td style="font-weight:600">${r.name}${badges}</td>
+                  <td><span class="count-pill">${r.contracts}</span></td>
+                  <td class="price-cell">${fmt(r.revenue)}</td>
+                  <td style="color:var(--green);font-family:'Inter',monospace">${fmt(r.gp)}</td>
+                  <td><span style="color:${gpPct>=30?'var(--green)':gpPct>=15?'#fbbf24':'var(--red)'};font-weight:600">${gpPct}%</span></td>
+                  <td class="price-cell">${fmt(avg)}</td>
+                  <td>
+                    <div style="display:flex;align-items:center;gap:8px">
+                      <div style="height:4px;width:${Math.max(share*1.5,4)}px;background:var(--service);border-radius:2px;max-width:80px"></div>
+                      <span style="font-size:11px;color:var(--muted)">${share}%</span>
+                    </div>
+                  </td>
+                </tr>`;
+              }).join('');
+            })()}
+          </tbody>
+        </table>
+      </div>
+    </div>
+
     <div class="charts-grid" style="margin-bottom:20px">
       <div class="chart-card">
         <div class="chart-title">Monthly Contracts Issued</div>
@@ -1283,6 +1377,215 @@ function renderService() {
       <div class="table-header">
         <h3>Service Contracts <span class="count-pill" style="margin-left:8px">${total}</span></h3>
       </div>
+
+    <!-- CONTRACT DURATION ANALYSIS -->
+    ${(() => {
+      const DURATIONS = [
+        { label:'1 Year',  test: r => { const d=r.duration||''; return d.includes('12') || d.toLowerCase().includes('1 year') || d.toLowerCase().includes('one year'); }},
+        { label:'2 Years', test: r => { const d=r.duration||''; return d.includes('24') || d.toLowerCase().includes('2 year') || d.toLowerCase().includes('two year'); }},
+        { label:'3 Years', test: r => { const d=r.duration||''; return d.includes('36') || d.toLowerCase().includes('3 year') || d.toLowerCase().includes('three year'); }},
+        { label:'5 Years', test: r => { const d=r.duration||''; return d.includes('60') || d.toLowerCase().includes('5 year') || d.toLowerCase().includes('five year'); }},
+      ];
+      const COLORS_DUR = ['#00dbfc','#85b8cc','#4ade80','#fbbf24'];
+
+      const stats = DURATIONS.map((dur, i) => {
+        const matches = filtered.filter(dur.test);
+        const rev = matches.reduce((s,r)=>s+r.sellingPrice,0);
+        const gp  = matches.reduce((s,r)=>s+r.grossProfit,0);
+        return { label: dur.label, contracts: matches.length, revenue: rev, gp, avg: matches.length ? rev/matches.length : 0, color: COLORS_DUR[i] };
+      }).filter(s => s.contracts > 0).sort((a,b) => b.revenue - a.revenue);
+
+      const totalContracts = stats.reduce((s,r)=>s+r.contracts,0);
+      const totalRev = stats.reduce((s,r)=>s+r.revenue,0);
+
+      return `
+      <div style="padding:16px 20px;border-top:1px solid var(--border);border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px">
+        <div style="width:32px;height:32px;background:#00dbfc12;border:1px solid #00dbfc33;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0">⏱</div>
+        <div>
+          <div style="font-size:15px;font-weight:700">Contract Duration Analysis</div>
+          <div style="font-size:12px;color:var(--muted);margin-top:2px">Understanding customer purchasing behaviour and retention opportunities</div>
+        </div>
+      </div>
+
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:0">
+        <!-- Table side -->
+        <div style="border-right:1px solid var(--border);overflow-x:auto">
+          <table style="min-width:400px">
+            <thead><tr>
+              <th>Duration</th><th>Contracts</th><th>Revenue (AED)</th><th>GP (AED)</th><th>Avg Value</th>
+            </tr></thead>
+            <tbody>
+              ${stats.map(s => {
+                const gpPct = s.revenue ? Math.round(s.gp/s.revenue*100) : 0;
+                const share = totalContracts ? Math.round(s.contracts/totalContracts*100) : 0;
+                return `<tr style="border-left:3px solid ${s.color}">
+                  <td>
+                    <div style="display:flex;align-items:center;gap:8px">
+                      <div style="width:8px;height:8px;border-radius:50%;background:${s.color};flex-shrink:0"></div>
+                      <span style="font-weight:600">${s.label}</span>
+                      <span style="font-size:10px;color:var(--muted)">${share}%</span>
+                    </div>
+                  </td>
+                  <td><span class="count-pill">${s.contracts}</span></td>
+                  <td class="price-cell">${fmt(s.revenue)}</td>
+                  <td style="color:${gpPct>=20?'var(--green)':'#fbbf24'};font-family:'Inter',monospace">${fmt(s.gp)}</td>
+                  <td class="price-cell">${fmt(s.avg)}</td>
+                </tr>`;
+              }).join('')}
+              <tr style="border-top:1px solid var(--border2);font-weight:700">
+                <td style="color:var(--muted);font-size:12px">Total</td>
+                <td><span class="count-pill">${totalContracts}</span></td>
+                <td class="price-cell">${fmt(totalRev)}</td>
+                <td style="color:var(--green);font-family:'Inter',monospace">${fmt(stats.reduce((s,r)=>s+r.gp,0))}</td>
+                <td class="price-cell">${fmt(totalContracts?totalRev/totalContracts:0)}</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <!-- Chart side -->
+        <div style="padding:20px">
+          <div style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:0.8px;font-weight:600;margin-bottom:12px">Duration Distribution</div>
+          <div style="position:relative;height:200px"><canvas id="sDurationChart"></canvas></div>
+          <div style="margin-top:16px;display:flex;flex-direction:column;gap:8px">
+            ${stats.map(s => {
+              const share = totalRev ? Math.round(s.revenue/totalRev*100) : 0;
+              return `<div style="display:flex;align-items:center;gap:10px">
+                <div style="width:10px;height:10px;border-radius:2px;background:${s.color};flex-shrink:0"></div>
+                <div style="flex:1;font-size:12px;color:var(--text)">${s.label}</div>
+                <div style="width:100px;height:4px;background:var(--border2);border-radius:2px;overflow:hidden">
+                  <div style="height:100%;width:${share}%;background:${s.color};border-radius:2px"></div>
+                </div>
+                <div style="font-size:11px;color:var(--muted);width:30px;text-align:right">${share}%</div>
+              </div>`;
+            }).join('')}
+          </div>
+        </div>
+      </div>`;
+    })()}
+
+      <div class="table-header" style="border-top:1px solid var(--border)">
+        <h3>🤝 Service Distributor Performance</h3>
+      </div>
+      <div style="padding:12px 20px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+        <span style="font-size:11px;color:var(--muted)">Sort by:</span>
+        ${['sRevenue','sContracts','sGp','sGpPct'].map(k=>`
+          <button onclick="sortSDistTable('${k}')" id="sDistSort_${k}"
+            style="background:${k==='sRevenue'?'var(--accent)':'var(--surface2)'};color:${k==='sRevenue'?'#03062b':'var(--muted)'};border:1px solid var(--border2);border-radius:6px;padding:5px 12px;font-size:11px;font-family:'Inter',sans-serif;cursor:pointer;font-weight:500">
+            ${{sRevenue:'Revenue',sContracts:'Contracts',sGp:'Gross Profit',sGpPct:'GP %'}[k]}
+          </button>`).join('')}
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:0">
+        <div style="overflow-x:auto;border-right:1px solid var(--border)">
+          <table id="sDistTable" style="min-width:480px">
+            <thead><tr>
+              <th>Rank</th><th>Distributor</th><th>Contracts</th>
+              <th>Revenue (AED)</th><th>GP (AED)</th><th>GP %</th><th>Avg Value</th>
+            </tr></thead>
+            <tbody id="sDistTableBody"></tbody>
+          </table>
+        </div>
+        <div style="padding:20px">
+          <div style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:0.8px;font-weight:600;margin-bottom:12px">Revenue by Distributor</div>
+          <div style="position:relative;height:220px"><canvas id="sSDistChart"></canvas></div>
+        </div>
+      </div>
+
+      <div class="table-header" style="border-top:1px solid var(--border)">
+        <h3>All Service Contracts <span class="count-pill" style="margin-left:8px">${total}</span></h3>
+      </div>
+
+    <!-- SERVICE RENEWAL OPPORTUNITY CENTER -->
+    ${(() => {
+      const exp30 = filtered.filter(r => { const d=daysUntil(r.endDate); return d!==null&&d>=0&&d<=30; });
+      const exp60 = filtered.filter(r => { const d=daysUntil(r.endDate); return d!==null&&d>30&&d<=60; });
+      const exp90 = filtered.filter(r => { const d=daysUntil(r.endDate); return d!==null&&d>60&&d<=90; });
+      const all90 = filtered.filter(r => { const d=daysUntil(r.endDate); return d!==null&&d>=0&&d<=90; });
+      const totalRenewRev = all90.reduce((s,r)=>s+r.sellingPrice,0);
+      const avgRenew = all90.length ? totalRenewRev/all90.length : 0;
+
+      const urgencyBadge = d => {
+        if (d<=30) return `<span style="background:#ff6b6b20;color:#ff6b6b;border:1px solid #ff6b6b44;border-radius:20px;padding:2px 8px;font-size:11px;font-weight:600">🔴 ${d}d left</span>`;
+        if (d<=60) return `<span style="background:#fb923c20;color:#fb923c;border:1px solid #fb923c44;border-radius:20px;padding:2px 8px;font-size:11px;font-weight:600">🟠 ${d}d left</span>`;
+        return `<span style="background:#fbbf2420;color:#fbbf24;border:1px solid #fbbf2444;border-radius:20px;padding:2px 8px;font-size:11px;font-weight:600">🟡 ${d}d left</span>`;
+      };
+
+      const allExpiring = all90.map(r=>({...r, daysLeft:daysUntil(r.endDate)})).sort((a,b)=>a.daysLeft-b.daysLeft);
+
+      return `
+      <div style="padding:16px 20px;border-top:1px solid var(--border);border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px">
+        <div style="width:32px;height:32px;background:#00dbfc12;border:1px solid #00dbfc33;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0">🔄</div>
+        <div>
+          <div style="font-size:15px;font-weight:700">Renewal Opportunity Center</div>
+          <div style="font-size:12px;color:var(--muted);margin-top:2px">Service contracts requiring follow-up — sorted by urgency</div>
+        </div>
+      </div>
+
+      <!-- Urgency Cards -->
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;padding:16px 20px">
+        <div style="background:var(--surface2);border:1px solid #ff6b6b44;border-top:2px solid #ff6b6b;border-radius:10px;padding:16px">
+          <div style="font-size:10px;color:#ff6b6b;text-transform:uppercase;letter-spacing:0.8px;font-weight:600;margin-bottom:8px">🔴 Expiring in 30 Days</div>
+          <div style="font-size:28px;font-weight:800;color:#ff6b6b">${exp30.length}</div>
+          <div style="font-size:11px;color:var(--muted);margin-top:4px">AED ${fmt(exp30.reduce((s,r)=>s+r.sellingPrice,0))} at risk</div>
+        </div>
+        <div style="background:var(--surface2);border:1px solid #fb923c44;border-top:2px solid #fb923c;border-radius:10px;padding:16px">
+          <div style="font-size:10px;color:#fb923c;text-transform:uppercase;letter-spacing:0.8px;font-weight:600;margin-bottom:8px">🟠 Expiring in 60 Days</div>
+          <div style="font-size:28px;font-weight:800;color:#fb923c">${exp60.length}</div>
+          <div style="font-size:11px;color:var(--muted);margin-top:4px">AED ${fmt(exp60.reduce((s,r)=>s+r.sellingPrice,0))} at risk</div>
+        </div>
+        <div style="background:var(--surface2);border:1px solid #fbbf2444;border-top:2px solid #fbbf24;border-radius:10px;padding:16px">
+          <div style="font-size:10px;color:#fbbf24;text-transform:uppercase;letter-spacing:0.8px;font-weight:600;margin-bottom:8px">🟡 Expiring in 90 Days</div>
+          <div style="font-size:28px;font-weight:800;color:#fbbf24">${exp90.length}</div>
+          <div style="font-size:11px;color:var(--muted);margin-top:4px">AED ${fmt(exp90.reduce((s,r)=>s+r.sellingPrice,0))} at risk</div>
+        </div>
+      </div>
+
+      <!-- KPI Summary Cards -->
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;padding:0 20px 16px">
+        <div style="background:var(--surface2);border:1px solid var(--border2);border-radius:10px;padding:14px;display:flex;justify-content:space-between;align-items:center">
+          <div>
+            <div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:0.7px;margin-bottom:4px">Expiring Contracts (90d)</div>
+            <div style="font-size:22px;font-weight:800;color:var(--text)">${all90.length}</div>
+          </div>
+          <div style="font-size:24px">📋</div>
+        </div>
+        <div style="background:var(--surface2);border:1px solid var(--border2);border-radius:10px;padding:14px;display:flex;justify-content:space-between;align-items:center">
+          <div>
+            <div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:0.7px;margin-bottom:4px">Potential Renewal Revenue</div>
+            <div style="font-size:18px;font-weight:800;color:var(--accent)">AED ${fmt(totalRenewRev)}</div>
+          </div>
+          <div style="font-size:24px">💰</div>
+        </div>
+        <div style="background:var(--surface2);border:1px solid var(--border2);border-radius:10px;padding:14px;display:flex;justify-content:space-between;align-items:center">
+          <div>
+            <div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:0.7px;margin-bottom:4px">Avg Renewal Value</div>
+            <div style="font-size:18px;font-weight:800;color:var(--accent)">AED ${fmt(avgRenew)}</div>
+          </div>
+          <div style="font-size:24px">📊</div>
+        </div>
+      </div>
+
+      <!-- Expiring Contracts Table -->
+      <div style="overflow-x:auto;border-top:1px solid var(--border)">
+        <table style="min-width:650px">
+          <thead><tr>
+            <th>Customer</th><th>Vehicle</th><th>Product</th>
+            <th>Expiry Date</th><th>Urgency</th><th>Contract Value (AED)</th>
+          </tr></thead>
+          <tbody>
+            ${allExpiring.length ? allExpiring.map(r=>`
+              <tr style="border-left:3px solid ${r.daysLeft<=30?'#ff6b6b':r.daysLeft<=60?'#fb923c':'#fbbf24'}">
+                <td><div class="customer-name">${r.customerName||'—'}</div><div class="customer-mobile">${r.customerMobile||''}</div></td>
+                <td><div class="customer-name">${r.make||''} ${r.model||''}</div><div class="customer-mobile">${r.plate||''}</div></td>
+                <td style="font-weight:500">${r.contractType||'—'}</td>
+                <td class="date-cell">${r.endDate||'—'}</td>
+                <td>${urgencyBadge(r.daysLeft)}</td>
+                <td class="price-cell">${r.sellingPrice?fmt(r.sellingPrice):'—'}</td>
+              </tr>`).join('') : `<tr><td colspan="6"><div class="empty-state" style="padding:30px"><h3>No contracts expiring in 90 days</h3></div></td></tr>`}
+          </tbody>
+        </table>
+      </div>`;
+    })()}
       <div class="table-wrap">
         <table>
           <thead><tr>
@@ -1310,14 +1613,107 @@ function renderService() {
         </table>
       </div>
     </div>
+
+    <!-- SERVICE SALES INTELLIGENCE -->
+    ${(() => {
+      if (!filtered.length) return '';
+      const highestValue  = filtered.reduce((a,b)=>b.sellingPrice>a.sellingPrice?b:a, filtered[0]);
+      const highestGP     = filtered.reduce((a,b)=>b.grossProfit>a.grossProfit?b:a, filtered[0]);
+      const productMap={};
+      filtered.forEach(r=>{const k=r.contractType||'Unknown';productMap[k]=(productMap[k]||0)+1;});
+      const topProduct=Object.entries(productMap).sort((a,b)=>b[1]-a[1])[0]||['—',0];
+      const productGP={};
+      filtered.forEach(r=>{const k=r.contractType||'Unknown';if(!productGP[k])productGP[k]={gp:0,rev:0};productGP[k].gp+=r.grossProfit||0;productGP[k].rev+=r.sellingPrice||0;});
+      const mostProfitable=Object.entries(productGP).map(([k,v])=>({name:k,gpPct:v.rev?v.gp/v.rev*100:0})).sort((a,b)=>b.gpPct-a.gpPct)[0]||{name:'—',gpPct:0};
+      const distMap={};
+      filtered.forEach(r=>{const k=r.distributor||'Unknown';if(!distMap[k])distMap[k]={contracts:0,revenue:0};distMap[k].contracts++;distMap[k].revenue+=r.sellingPrice||0;});
+      const topDist=Object.entries(distMap).sort((a,b)=>b[1].revenue-a[1].revenue)[0]||['—',{contracts:0,revenue:0}];
+      const brandMap={};
+      filtered.forEach(r=>{const k=r.make||'Unknown';brandMap[k]=(brandMap[k]||0)+1;});
+      const topBrand=Object.entries(brandMap).sort((a,b)=>b[1]-a[1])[0]||['—',0];
+      const totalRev=filtered.reduce((s,r)=>s+r.sellingPrice,0);
+      const totalGP=filtered.reduce((s,r)=>s+r.grossProfit,0);
+      const avgValue=filtered.length?totalRev/filtered.length:0;
+      const avgGP=filtered.length?totalGP/filtered.length:0;
+      const avgMargin=totalRev?Math.round(totalGP/totalRev*100):0;
+      const card=(icon,label,value,sub,color='var(--text)',border='var(--border2)')=>`
+        <div style="background:var(--surface2);border:1px solid var(--border2);border-top:2px solid ${border};border-radius:12px;padding:18px 20px;display:flex;flex-direction:column;gap:6px">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:2px">
+            <div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:0.8px;font-weight:600">${label}</div>
+            <div style="font-size:18px">${icon}</div>
+          </div>
+          <div style="font-size:17px;font-weight:800;color:${color};line-height:1.3;word-break:break-word">${value}</div>
+          ${sub?`<div style="font-size:11px;color:var(--muted);margin-top:2px">${sub}</div>`:''}
+        </div>`;
+      return `
+      <div class="table-section" style="margin-bottom:20px">
+        <div style="padding:16px 20px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px">
+          <div style="width:32px;height:32px;background:#85b8cc18;border:1px solid #85b8cc44;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0">🧠</div>
+          <div>
+            <div style="font-size:15px;font-weight:700">Service Contract Sales Intelligence</div>
+            <div style="font-size:12px;color:var(--muted);margin-top:2px">Executive insights from your live service contract dataset</div>
+          </div>
+        </div>
+        <div style="padding:20px;display:grid;grid-template-columns:repeat(4,1fr);gap:12px">
+          ${card('🏆','Highest Value Contract','AED '+fmt(highestValue.sellingPrice),`${highestValue.customerName||''} · ${highestValue.contractType||''}`,'var(--accent)','var(--accent)')}
+          ${card('💰','Highest GP Contract','AED '+fmt(highestGP.grossProfit),`${highestGP.customerName||''} · ${highestGP.contractType||''}`,'var(--green)','var(--green)')}
+          ${card('📦','Most Popular Product',topProduct[0],`${topProduct[1]} contracts`,'var(--service)','var(--service)')}
+          ${card('🎯','Most Profitable Product',mostProfitable.name,`${Math.round(mostProfitable.gpPct)}% GP margin`,'var(--green)','var(--green)')}
+        </div>
+        <div style="padding:0 20px 20px;display:grid;grid-template-columns:repeat(4,1fr);gap:12px">
+          ${card('🤝','Top Distributor',topDist[0],`${topDist[1].contracts} contracts · AED ${fmt(topDist[1].revenue)}`,'var(--accent)','var(--accent)')}
+          ${card('🚘','Top Vehicle Brand',topBrand[0],`${topBrand[1]} contracts`,'var(--service)','var(--service)')}
+          ${card('📊','Avg Contract Value','AED '+fmt(avgValue),`across ${filtered.length} contracts`,'var(--accent)','var(--border2)')}
+          ${card('📈','Avg GP Per Contract','AED '+fmt(avgGP),`${avgMargin}% avg margin`,'var(--green)','var(--border2)')}
+        </div>
+      </div>`;
+    })()}
   `;
 
   makeChart('sMonthlyChart', 'bar',
     MONTHS.map(m=>m.slice(0,3)),
-    [{ label:'Contracts', data:monthlyCount(filtered), backgroundColor:'#a78bfa30', borderColor:'#a78bfa', borderWidth:2, borderRadius:4 }]
+    [{ label:'Contracts', data:monthlyCount(filtered), backgroundColor:'#85b8cc30', borderColor:'#85b8cc', borderWidth:2, borderRadius:4 }]
   );
-  const COLORS = ['#a78bfa','#38bdf8','#e8ff47','#4ade80','#fb923c','#f472b6'];
+  const COLORS = ['#00dbfc','#85b8cc','#4ade80','#fb923c','#f472b6','#fbbf24'];
   makeChart('sTypeChart', 'doughnut', typeLabels, [{ data:typeVals, backgroundColor:COLORS.slice(0,typeLabels.length), borderWidth:0, hoverOffset:6 }]);
+
+  // Service distributor data
+  const sDistStats = {};
+  filtered.forEach(r => {
+    const k = r.distributor || 'Unknown';
+    if (!sDistStats[k]) sDistStats[k] = {contracts:0, revenue:0, gp:0};
+    sDistStats[k].contracts++;
+    sDistStats[k].revenue += r.sellingPrice||0;
+    sDistStats[k].gp += r.grossProfit||0;
+  });
+  window._sSDistStats = sDistStats;
+
+  setTimeout(() => {
+    sortSDistTable('sRevenue');
+    const sDistEntries = Object.entries(sDistStats).sort((a,b)=>b[1].revenue-a[1].revenue).slice(0,8);
+    makeChart('sSDistChart', 'bar',
+      sDistEntries.map(([k])=>k),
+      [{ label:'Revenue (AED)', data:sDistEntries.map(([,v])=>v.revenue), backgroundColor:'#85b8cc25', borderColor:'#85b8cc', borderWidth:2, borderRadius:4 }],
+      { indexAxis:'y', plugins:{ legend:{ display:false } } }
+    );
+  }, 50);
+    const DURATIONS = [
+      { label:'1 Year',  test: r => { const d=r.duration||''; return d.includes('12')||d.toLowerCase().includes('1 year'); }},
+      { label:'2 Years', test: r => { const d=r.duration||''; return d.includes('24')||d.toLowerCase().includes('2 year'); }},
+      { label:'3 Years', test: r => { const d=r.duration||''; return d.includes('36')||d.toLowerCase().includes('3 year'); }},
+      { label:'5 Years', test: r => { const d=r.duration||''; return d.includes('60')||d.toLowerCase().includes('5 year'); }},
+    ];
+    const COLORS_DUR = ['#00dbfc','#85b8cc','#4ade80','#fbbf24'];
+    const stats = DURATIONS.map((dur,i) => {
+      const matches = filtered.filter(dur.test);
+      return { label: dur.label, contracts: matches.length, color: COLORS_DUR[i] };
+    }).filter(s => s.contracts > 0);
+    makeChart('sDurationChart', 'doughnut',
+      stats.map(s=>s.label),
+      [{ data: stats.map(s=>s.contracts), backgroundColor: stats.map(s=>s.color), borderWidth:0, hoverOffset:6 }],
+      { plugins:{ legend:{ display:false } } }
+    );
+  }, 50);
 }
 
 // ─── AI INSIGHTS ──────────────────────────────────────────────
