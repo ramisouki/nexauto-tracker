@@ -1697,6 +1697,9 @@ function renderService() {
       { indexAxis:'y', plugins:{ legend:{ display:false } } }
     );
   }, 50);
+
+  // Duration chart
+  setTimeout(() => {
     const DURATIONS = [
       { label:'1 Year',  test: r => { const d=r.duration||''; return d.includes('12')||d.toLowerCase().includes('1 year'); }},
       { label:'2 Years', test: r => { const d=r.duration||''; return d.includes('24')||d.toLowerCase().includes('2 year'); }},
