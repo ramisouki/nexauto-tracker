@@ -851,17 +851,6 @@ function renderWarranty() {
       </div>
     </div>
 
-    <div class="charts-grid" style="margin-bottom:20px">
-      <div class="chart-card">
-        <div class="chart-title">Monthly Contracts Issued</div>
-        <div class="chart-wrap"><canvas id="wMonthlyChart"></canvas></div>
-      </div>
-      <div class="chart-card">
-        <div class="chart-title">By Insurance Company</div>
-        <div class="chart-wrap"><canvas id="wInsChart"></canvas></div>
-      </div>
-    </div>
-
     <!-- WARRANTY SALES INTELLIGENCE -->
     ${(() => {
       if (!filtered.length) return '';
@@ -1193,15 +1182,16 @@ function renderWarranty() {
   });
   window._wDistStats = distStats;
   window._wDistFiltered = filtered;
-  buildDistTable('revenue');
 
-  // Distributor bar chart
-  const distEntries = Object.entries(distStats).sort((a,b)=>b[1].revenue-a[1].revenue).slice(0,8);
-  makeChart('wDistChart', 'bar',
-    distEntries.map(([k])=>k),
-    [{ label:'Revenue (AED)', data:distEntries.map(([,v])=>v.revenue), backgroundColor:'#00dbfc25', borderColor:'#00dbfc', borderWidth:2, borderRadius:4 }],
-    { indexAxis:'y', plugins:{ legend:{ display:false } } }
-  );
+  setTimeout(() => {
+    buildDistTable('revenue');
+    const distEntries = Object.entries(distStats).sort((a,b)=>b[1].revenue-a[1].revenue).slice(0,8);
+    makeChart('wDistChart', 'bar',
+      distEntries.map(([k])=>k),
+      [{ label:'Revenue (AED)', data:distEntries.map(([,v])=>v.revenue), backgroundColor:'#00dbfc25', borderColor:'#00dbfc', borderWidth:2, borderRadius:4 }],
+      { indexAxis:'y', plugins:{ legend:{ display:false } } }
+    );
+  }, 50);
 }
 
 // ─── DISTRIBUTOR TABLE ────────────────────────────────────────
